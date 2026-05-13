@@ -38,34 +38,37 @@ The notebook imports the following libraries:
 - `cv2` for image processing and contour detection
 - `urllib3` for HTTP requests to the camera
 - `imutils` for frame resizing and contour handling
-- `base64` for HTTP Basic Auth encoding
 - `time` for polling delays
 - `numpy` for byte-to-array conversion
 - `datetime` for timestamp overlay
 - `matplotlib` for inline image display
-- `IPython.display.clear_output` for refreshing notebook output
+- `IPython.display.clear_output` / `display` for refreshing notebook output
 
 ### 2. Camera configuration
 
-The notebook defines:
+The notebook defines camera settings with environment-variable overrides:
 
-- `ip` — camera IP address
-- `port` — camera port
-- `user` — username
-- `passw` — password
+- `CAMERA_IP` / `IP_CAM_HOST`
+- `CAMERA_PORT` / `IP_CAM_PORT`
+- `CAMERA_USER` / `IP_CAM_USER`
+- `CAMERA_PASSWORD` / `IP_CAM_PASSWORD`
+- `CAMERA_JPEG_SIZE` / `IP_CAM_JPEG_SIZE`
 
-These values are used to build the snapshot URL:
+The snapshot URL is built as:
 
-`http://{user}:{passw}@{ip}:{port}/snap.jpg?JpegSize=XL`
+`http://{host}:{port}/snap.jpg?JpegSize=XL`
+
+Credentials are sent through HTTP Basic Auth headers when both user and password are provided.
 
 ### 3. IP camera wrapper
 
 The `IPCamera` class:
 
 - stores the camera URL
-- creates an `urllib3.PoolManager`
-- builds a Base64-encoded Authorization header
+- creates an `urllib3.PoolManager` with retries and timeout
+- builds auth headers only when credentials are provided
 - fetches a frame from the snapshot endpoint
+- handles request/decode failures gracefully
 - decodes the response bytes into an OpenCV image
 
 The helper function `get_frame()` simply returns `cam.get_frame()`.
@@ -74,14 +77,14 @@ The helper function `get_frame()` simply returns `cam.get_frame()`.
 
 The notebook initializes:
 
-- `first_frame = None`
-- `min_area = 200`
-- `width = 800`
+- baseline frame state (`first_frame`)
+- tunable detection settings (min area, threshold value, blur kernel, dilate iterations)
+- polling controls (sleep interval, max frame fetch failures, stop-on-motion flag)
 
 Then it enters an infinite loop that:
 
 - fetches the next frame
-- stops if no frame is returned
+- retries when frame fetch fails and stops only after repeated failures
 - resizes the frame
 - converts it to grayscale
 - blurs it
@@ -90,8 +93,8 @@ Then it enters an infinite loop that:
 - detects moving regions from contour areas
 - annotates the image with status and timestamp
 - renders debug views in the notebook
-- waits one second between iterations
-- stops when motion is found or the user presses `q`
+- waits between iterations based on configurable poll interval
+- stops when motion is found (default) or on `KeyboardInterrupt`
 
 ## Motion detection algorithm details
 
@@ -119,10 +122,9 @@ These views help debug false positives and tune the contour area threshold.
 - The reference background is only the first frame and is never updated.
   - This makes the detector simple, but sensitive to lighting changes.
 - The notebook polls a snapshot endpoint instead of reading a continuous RTSP/video stream.
-- Credentials are stored directly in the notebook variables.
+- Credentials can be provided through environment variables instead of hard-coding.
 - The loop breaks on the first detected motion event.
-- `cv2.waitKey()` behavior in notebooks can vary depending on environment.
-- A very small `min_area` may cause false positives from noise or compression artifacts.
+- A very small `MOTION_MIN_AREA` may cause false positives from noise or compression artifacts.
 
 ## How to use
 
@@ -134,14 +136,14 @@ These views help debug false positives and tune the contour area threshold.
    - `numpy`
    - `matplotlib`
    - `ipython`
-3. Set your camera connection values:
-   - `ip`
-   - `port`
-   - `user`
-   - `passw`
+3. Set your camera connection values in the notebook or with environment variables:
+   - `IP_CAM_HOST`
+   - `IP_CAM_PORT`
+   - `IP_CAM_USER`
+   - `IP_CAM_PASSWORD`
 4. Run the notebook cells in order.
 5. Watch the three output panels for detected motion.
-6. Adjust `min_area` or frame width if detection is too sensitive or not sensitive enough.
+6. Adjust `MOTION_MIN_AREA`, threshold, blur, or frame width values if detection is too sensitive or not sensitive enough.
 
 ## Possible improvements
 
