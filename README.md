@@ -42,7 +42,7 @@ The notebook imports the following libraries:
 - `numpy` for byte-to-array conversion
 - `datetime` for timestamp overlay
 - `matplotlib` for inline image display
-- `IPython.display.clear_output` / `display` for refreshing notebook output
+- `IPython.display.clear_output` and `IPython.display.display` for refreshing notebook output
 
 ### 2. Camera configuration
 
@@ -65,7 +65,7 @@ Credentials are sent through HTTP Basic Auth headers when both user and password
 The `IPCamera` class:
 
 - stores the camera URL
-- creates an `urllib3.PoolManager` with retries and timeout
+- creates an `urllib3.PoolManager` with retries (`total=2`) and timeout (`5s` by default, configurable)
 - builds auth headers only when credentials are provided
 - fetches a frame from the snapshot endpoint
 - handles request/decode failures gracefully
@@ -79,7 +79,10 @@ The notebook initializes:
 
 - baseline frame state (`first_frame`)
 - tunable detection settings (min area, threshold value, blur kernel, dilate iterations)
-- polling controls (sleep interval, max frame fetch failures, stop-on-motion flag)
+- polling controls:
+  - `POLL_INTERVAL_SECONDS` / `IP_CAM_POLL_SECONDS` (default `1`)
+  - `MAX_CONSECUTIVE_FETCH_FAILURES` / `IP_CAM_MAX_FETCH_FAILURES` (default `5`)
+  - `STOP_ON_MOTION` / `IP_CAM_STOP_ON_MOTION` (default `1`)
 
 Then it enters an infinite loop that:
 
